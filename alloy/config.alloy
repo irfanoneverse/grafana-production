@@ -1,0 +1,177 @@
+// =============================================================================
+// Grafana Alloy Configuration — Laravel Application Node
+// =============================================================================
+// Deployed on each of the 6 Laravel EC2 instances.
+// Collects: Logs (→ Loki), Metrics (→ Mimir), Traces (→ Tempo)
+//
+// IMPORTANT: Replace LGTM_SERVER_PRIVATE_IP with the private IP of your
+//            observability EC2 (e.g., 10.0.1.50).
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// 1. LOGS — Tail Laravel log files and ship to Loki
+// ---------------------------------------------------------------------------
+
+// Discover local log files
+local.file_match "laravel_logs" {
+  path_targets = [
+    // Laravel application log
+    { __path__ = "/var/www/html/storage/logs/*.log", job = "laravel", app = "laravel" },
+    // Nginx access and error logs
+    { __path__ = "/var/log/nginx/access.log", job = "nginx", app = "nginx" },
+    { __path__ = "/var/log/nginx/error.log",  job = "nginx", app = "nginx" },
+    // PHP-FPM logs
+    { __path__ = "/var/log/php*-fpm.log", job = "php-fpm", app = "php-fpm" },
+    // Syslog (optional, useful for system-level debugging)
+    { __path__ = "/var/log/syslog", job = "syslog", app = "system" },
+  ]
+}
+
+// Tail and ship logs to Loki
+loki.source.file "log_scrape" {
+  targets    = local.file_match.laravel_logs.targets
+  forward_to = [loki.process.laravel_pipeline.receiver]
+
+  tail_from_end = true
+}
+
+// Process logs: add labels, parse Laravel log format
+loki.process "laravel_pipeline" {
+  // Add the hostname as a label
+  stage.static_labels {
+    values = {
+      hostname = env("HOSTNAME"),
+      // Change this per instance to identify each Laravel app
+      instance = "laravel-app-1",
+    }
+  }
+
+  // Parse Laravel log format: [YYYY-MM-DD HH:MM:SS] environment.LEVEL: message
+  stage.regex {
+    expression = "^\\[(?P<timestamp>\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}\\.?\\d*)\\]\\s+(?P<environment>\\w+)\\.(?P<level>\\w+):\\s+(?P<message>.*)$"
+  }
+
+  // Set the timestamp from the log line
+  stage.timestamp {
+    source = "timestamp"
+    format = "2006-01-02 15:04:05"
+  }
+
+  // Promote parsed fields to labels
+  stage.labels {
+    values = {
+      level       = "level",
+      environment = "environment",
+    }
+  }
+
+  // Extract traceId if present (for Loki↔Tempo correlation)
+  stage.regex {
+    expression = "\"traceId\"\\s*:\\s*\"(?P<traceId>[a-f0-9]+)\""
+  }
+  stage.labels {
+    values = {
+      traceId = "traceId",
+    }
+  }
+
+  forward_to = [loki.write.loki_endpoint.receiver]
+}
+
+// Write logs to the central Loki instance
+loki.write "loki_endpoint" {
+  endpoint {
+    url = "http://LGTM_SERVER_PRIVATE_IP:3100/loki/api/v1/push"
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// 2. METRICS — Scrape local exporters and ship to Mimir
+// ---------------------------------------------------------------------------
+
+// Node Exporter (must be installed separately, see README)
+prometheus.scrape "node_exporter" {
+  targets = [
+    { __address__ = "localhost:9100", job = "node-exporter" },
+  ]
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.mimir_endpoint.receiver]
+}
+
+// Nginx Exporter (must be installed separately, see README)
+// Requires nginx stub_status enabled
+prometheus.scrape "nginx_exporter" {
+  targets = [
+    { __address__ = "localhost:9113", job = "nginx-exporter" },
+  ]
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.mimir_endpoint.receiver]
+}
+
+// PHP-FPM Exporter (must be installed separately, see README)
+// Requires PHP-FPM status page enabled
+prometheus.scrape "phpfpm_exporter" {
+  targets = [
+    { __address__ = "localhost:9253", job = "phpfpm-exporter" },
+  ]
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.mimir_endpoint.receiver]
+}
+
+// Add instance-identifying labels to all metrics
+prometheus.relabel "add_instance_labels" {
+  forward_to = [prometheus.remote_write.mimir_endpoint.receiver]
+  rule {
+    target_label = "instance"
+    replacement  = "laravel-app-1"   // Change per instance
+  }
+  rule {
+    target_label = "environment"
+    replacement  = "production"
+  }
+}
+
+// Remote write metrics to the central Mimir instance
+prometheus.remote_write "mimir_endpoint" {
+  endpoint {
+    url = "http://LGTM_SERVER_PRIVATE_IP:9009/api/v1/push"
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// 3. TRACES — Receive OTLP traces from the Laravel app and ship to Tempo
+// ---------------------------------------------------------------------------
+
+// OTLP receiver for traces (Laravel app sends traces here via HTTP)
+otelcol.receiver.otlp "laravel_traces" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+
+// Batch traces before sending (reduces network calls)
+otelcol.processor.batch "default" {
+  timeout = "5s"
+  send_batch_size = 1024
+  output {
+    traces = [otelcol.exporter.otlphttp.tempo_endpoint.input]
+  }
+}
+
+// Export traces to central Tempo over OTLP HTTP
+otelcol.exporter.otlphttp "tempo_endpoint" {
+  client {
+    endpoint = "http://LGTM_SERVER_PRIVATE_IP:4318"
+    tls {
+      insecure = true
+    }
+  }
+}

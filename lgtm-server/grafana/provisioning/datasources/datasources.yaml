@@ -1,0 +1,62 @@
+# =============================================================================
+# Grafana Provisioning — Datasources
+# =============================================================================
+# Automatically configures Loki, Mimir, and Tempo as datasources.
+# Enable correlations between logs ↔ traces ↔ metrics.
+# =============================================================================
+
+apiVersion: 1
+
+datasources:
+  # ---------------------------------------------------------------------------
+  # Mimir (Prometheus-compatible metrics)
+  # ---------------------------------------------------------------------------
+  - name: Mimir
+    type: prometheus
+    uid: mimir
+    access: proxy
+    url: http://mimir:9009/prometheus
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      exemplarTraceIdDestinations:
+        - name: traceID
+          datasourceUid: tempo
+
+  # ---------------------------------------------------------------------------
+  # Loki (Log aggregation)
+  # ---------------------------------------------------------------------------
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: '"traceId"\s*:\s*"(\w+)"'
+          name: TraceID
+          url: "$${__value.raw}"
+      maxLines: 1000
+
+  # ---------------------------------------------------------------------------
+  # Tempo (Distributed tracing)
+  # ---------------------------------------------------------------------------
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        filterByTraceID: true
+        filterBySpanID: false
+      tracesToMetrics:
+        datasourceUid: mimir
+      serviceMap:
+        datasourceUid: mimir
+      nodeGraph:
+        enabled: true
+      lokiSearch:
+        datasourceUid: loki

@@ -1,0 +1,20 @@
+{
+  "Rules": [
+    {
+      "ID": "ObservabilityDataLifecycle",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": ""
+      },
+      "Transitions": [
+        {
+          "Days": 30,
+          "StorageClass": "INTELLIGENT_TIERING"
+        }
+      ],
+      "Expiration": {
+        "Days": 100
+      }
+    }
+  ]
+}

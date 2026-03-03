@@ -1,0 +1,137 @@
+# =============================================================================
+# Docker Compose — LGTM Observability Stack
+# =============================================================================
+# Deploys Loki, Grafana, Tempo, and Mimir on a single EC2 instance.
+# All components run in single-binary mode behind Docker networking.
+# S3 is used for long-term storage via IAM Instance Profile.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Loki — Log Aggregation
+  # ---------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100" # HTTP API (receives logs from Alloy)
+      - "9096:9096" # gRPC
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lgtm
+
+  # ---------------------------------------------------------------------------
+  # Mimir — Metrics Storage (Prometheus-compatible)
+  # ---------------------------------------------------------------------------
+  mimir:
+    image: grafana/mimir:2.15.0
+    container_name: mimir
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/mimir/config.yaml
+      - -config.expand-env=true
+    volumes:
+      - ./mimir-config.yaml:/etc/mimir/config.yaml:ro
+      - ./alertmanager-fallback-config.yaml:/etc/mimir/alertmanager-fallback-config.yaml:ro
+      - mimir-data:/data/mimir
+    ports:
+      - "9009:9009" # HTTP API (receives remote_write from Alloy)
+      - "9095:9095" # gRPC
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:9009/ready || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lgtm
+
+  # ---------------------------------------------------------------------------
+  # Tempo — Distributed Tracing
+  # ---------------------------------------------------------------------------
+  tempo:
+    image: grafana/tempo:2.7.1
+    container_name: tempo
+    restart: unless-stopped
+    command: -config.file=/etc/tempo/config.yaml
+    volumes:
+      - ./tempo-config.yaml:/etc/tempo/config.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200" # HTTP API (Grafana queries this)
+      - "4317:4317" # OTLP gRPC (receives traces from Alloy)
+      - "4318:4318" # OTLP HTTP (receives traces from Alloy)
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:3200/ready || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lgtm
+
+  # ---------------------------------------------------------------------------
+  # Grafana — Visualization & Alerting
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=changeme # CHANGE THIS IN PRODUCTION
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000 # Update to your domain
+      - GF_FEATURE_TOGGLES_ENABLE=traceQLStreaming,metricsSummary
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000" # Grafana UI
+    depends_on:
+      loki:
+        condition: service_healthy
+      mimir:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lgtm
+
+volumes:
+  loki-data:
+  mimir-data:
+  tempo-data:
+  grafana-data:
+
+networks:
+  lgtm:
+    driver: bridge
