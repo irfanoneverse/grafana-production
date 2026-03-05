@@ -50,16 +50,8 @@ services:
     ports:
       - "9009:9009" # HTTP API (receives remote_write from Alloy)
       - "9095:9095" # gRPC
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget --no-verbose --tries=1 --spider http://localhost:9009/ready || exit 1",
-        ]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
+    # Note: grafana/mimir:2.15.0 is a distroless image (no /bin/sh, no wget).
+    # CMD-SHELL health checks cannot run. Mimir starts in ~2s (verified via logs).
     networks:
       - lgtm
 
@@ -113,7 +105,7 @@ services:
       loki:
         condition: service_healthy
       mimir:
-        condition: service_healthy
+        condition: service_started
       tempo:
         condition: service_healthy
     healthcheck:
