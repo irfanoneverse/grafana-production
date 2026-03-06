@@ -31,7 +31,7 @@ services:
   # Collects logs, metrics (built-in exporters), and traces from the host.
   # Uses host networking so it can access:
   #   - Nginx stub_status on 127.0.0.1:8080
-  #   - PHP-FPM status on 127.0.0.1:80/fpm-status
+  #   - PHP-FPM status on 127.0.0.1:8080/fpm-status
   #   - Host /proc and /sys for system metrics
   #   - Laravel log files on the host filesystem
   # ---------------------------------------------------------------------------

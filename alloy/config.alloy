@@ -126,7 +126,7 @@ prometheus.scrape "nginx_metrics" {
 // Prerequisite: PHP-FPM pm.status_path must be enabled (see README).
 prometheus.exporter.php_fpm "fpm" {
   targets = [
-    { address = "tcp://127.0.0.1:80/fpm-status" },
+    { address = "tcp://127.0.0.1:8080/fpm-status" },
   ]
 }
 

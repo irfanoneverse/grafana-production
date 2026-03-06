@@ -126,11 +126,11 @@ prometheus.scrape "nginx_metrics" {
 }
 
 // --- PHP-FPM Metrics (replaces standalone PHP-FPM Exporter) ---
-// Because we use host networking, Alloy can reach PHP-FPM status on 127.0.0.1:80
-// exactly like the systemd version.
+// Because we use host networking, Alloy can reach the dedicated status server
+// on 127.0.0.1:8080 exactly like the systemd version.
 prometheus.exporter.php_fpm "fpm" {
   targets = [
-    { address = "tcp://127.0.0.1:80/fpm-status" },
+    { address = "tcp://127.0.0.1:8080/fpm-status" },
   ]
 }
 

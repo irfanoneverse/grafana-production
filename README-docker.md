@@ -21,7 +21,7 @@ A **safe deployment approach** for the monitoring agent: run Grafana Alloy insid
 | **OpenTelemetry**  | Installed via Composer (untouched)          | **Same — untouched**                              |
 | **Rollback**       | `sudo systemctl stop alloy`                 | `docker compose down`                             |
 
-> **Why host networking?** Alloy needs to reach `127.0.0.1:8080` (Nginx stub_status) and `127.0.0.1:80/fpm-status` (PHP-FPM status). With `network_mode: host`, the container shares the host's network stack — so all `localhost` endpoints work exactly like the systemd version. No URL changes needed.
+> **Why host networking?** Alloy needs to reach `127.0.0.1:8080/nginx_status` (Nginx stub_status) and `127.0.0.1:8080/fpm-status` (PHP-FPM status). With `network_mode: host`, the container shares the host's network stack, so both localhost endpoints work exactly like the systemd version.
 
 ---
 
@@ -120,21 +120,32 @@ curl -s http://127.0.0.1:8080/nginx_status
 sudo sed -i 's/;pm.status_path = \/status/pm.status_path = \/status/' /etc/php/*/fpm/pool.d/www.conf
 sudo systemctl restart php*-fpm
 
-# Add Nginx location block to proxy the status page
-sudo tee -a /etc/nginx/conf.d/stub_status.conf << 'EOF'
+# Rewrite the dedicated status server so it exposes both endpoints on 127.0.0.1:8080
+# Adjust the PHP-FPM socket path if your version differs (for example: /run/php/php8.3-fpm.sock)
+sudo tee /etc/nginx/conf.d/stub_status.conf << 'EOF'
+server {
+    listen 8080;
+    server_name localhost;
+
+    location /nginx_status {
+        stub_status on;
+        allow 127.0.0.1;
+        deny all;
+    }
 
     location /fpm-status {
         include fastcgi_params;
-        fastcgi_pass unix:/run/php/php-fpm.sock;    # Adjust to your PHP-FPM socket
+        fastcgi_pass unix:/run/php/php-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         allow 127.0.0.1;
         deny all;
     }
+}
 EOF
 sudo nginx -t && sudo systemctl reload nginx
 
 # Verify: should return PHP-FPM pool status
-curl -s http://127.0.0.1:80/fpm-status
+curl -s http://127.0.0.1:8080/fpm-status
 ```
 
 ---
@@ -452,7 +463,7 @@ docker exec alloy ls /host/sys/class/net
 docker exec alloy wget -qO- http://127.0.0.1:8080/nginx_status
 # Expected: Active connections: ...
 
-docker exec alloy wget -qO- http://127.0.0.1:80/fpm-status
+docker exec alloy wget -qO- http://127.0.0.1:8080/fpm-status
 # Expected: pool, process manager, ...
 ```
 
