@@ -21,7 +21,7 @@ A **safe deployment approach** for the monitoring agent: run Grafana Alloy insid
 | **OpenTelemetry**  | Installed via Composer (untouched)          | **Same — untouched**                              |
 | **Rollback**       | `sudo systemctl stop alloy`                 | `docker compose down`                             |
 
-> **Why host networking?** Alloy needs to reach `127.0.0.1:8080/nginx_status` (Nginx stub_status) and `127.0.0.1:8080/fpm-status` (PHP-FPM status). With `network_mode: host`, the container shares the host's network stack, so both localhost endpoints work exactly like the systemd version.
+> **Why host networking?** The sidecar exporters (nginx-exporter, phpfpm-exporter) need to reach `127.0.0.1:8080/nginx_status` and `127.0.0.1:8080/fpm-status`. Alloy then scrapes those exporters on `127.0.0.1:9113` and `127.0.0.1:9253`. With `network_mode: host`, all containers share the host's network stack, so localhost endpoints work exactly like the systemd version.
 
 ---
 
@@ -218,11 +218,13 @@ docker compose up -d
 docker compose logs -f --tail=50
 # Press Ctrl+C to stop following logs
 
-# Verify the container is healthy
+# Verify all containers are healthy
 docker compose ps
 # Expected:
-# NAME    STATUS         PORTS
-# alloy   Up (healthy)
+# NAME               STATUS         PORTS
+# alloy              Up (healthy)
+# nginx-exporter     Up
+# phpfpm-exporter    Up
 ```
 
 ### 4.5 Verify Alloy Is Running
@@ -439,8 +441,10 @@ sudo rm /etc/apt/sources.list.d/grafana.list
 # Container should be running and healthy
 docker compose ps
 # Expected:
-# NAME    STATUS         PORTS
-# alloy   Up (healthy)
+# NAME               STATUS         PORTS
+# alloy              Up (healthy)
+# nginx-exporter     Up
+# phpfpm-exporter    Up
 
 # Check for errors in the logs
 docker compose logs --tail=50 alloy
@@ -461,15 +465,22 @@ docker exec alloy ls /host/sys/class/net
 # Expected: list of network interfaces
 ```
 
-### 8.3 Verify Status Endpoints Are Reachable
+### 8.3 Verify Status Endpoints and Exporters Are Reachable
 
 ```bash
-# From inside the container (should work because of host networking)
-docker exec alloy wget -qO- http://127.0.0.1:8080/nginx_status
+# Verify the raw status pages are reachable
+curl -s http://127.0.0.1:8080/nginx_status
 # Expected: Active connections: ...
 
-docker exec alloy wget -qO- http://127.0.0.1:8080/fpm-status
+curl -s http://127.0.0.1:8080/fpm-status
 # Expected: pool, process manager, ...
+
+# Verify the exporter containers are exposing Prometheus metrics
+curl -s http://127.0.0.1:9113/metrics | head -5
+# Expected: lines starting with nginx_...
+
+curl -s http://127.0.0.1:9253/metrics | head -5
+# Expected: lines starting with phpfpm_...
 ```
 
 ### 8.4 Verify Data Flow in Grafana

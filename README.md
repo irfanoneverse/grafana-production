@@ -2,9 +2,9 @@
 
 A complete, production-ready centralized observability platform using **Loki** (logs), **Grafana** (visualization), **Tempo** (traces), and **Mimir** (metrics), with **Grafana Alloy** as the unified collector agent on each application node.
 
-> **Gold Standard Approach**: This setup uses Alloy's **built-in exporters** instead of standalone binaries, and **OpenTelemetry auto-instrumentation** for deep request-level tracing. Zero extra systemd services beyond Alloy itself.
+> **Gold Standard Approach**: This setup uses Alloy as the unified collector with **built-in system metrics** (replacing Node Exporter), lightweight **Nginx and PHP-FPM exporter binaries**, and **OpenTelemetry auto-instrumentation** for deep request-level tracing.
 
-**Key difference from traditional setups**: Alloy is the **only process** you install. It replaces Node Exporter, Nginx Exporter, and PHP-FPM Exporter with built-in equivalents, while also collecting logs and forwarding traces.
+**Key difference from traditional setups**: Alloy handles system metrics, log collection, and trace forwarding natively. Nginx and PHP-FPM metrics require small standalone exporter binaries that convert their status pages to Prometheus format.
 
 ---
 
@@ -304,7 +304,7 @@ alloy --version
 
 ### 4.2 Enable Nginx & PHP-FPM Status Endpoints
 
-Alloy's built-in exporters need these status pages to scrape metrics from. **No separate exporter binaries are installed.**
+The Nginx and PHP-FPM exporter binaries read these status pages and convert them to Prometheus metrics that Alloy scrapes.
 
 #### Nginx `stub_status` (required for Nginx metrics)
 
@@ -366,7 +366,7 @@ sudo nginx -t && sudo systemctl reload nginx
 curl -s http://127.0.0.1:8080/fpm-status
 ```
 
-> **What about Node Exporter?** You don't need it at all. Alloy's built-in `prometheus.exporter.unix` reads directly from Linux's `/proc` and `/sys` filesystems — same data, zero extra processes.
+> **What about Node Exporter?** You don't need it. Alloy's built-in `prometheus.exporter.unix` reads directly from Linux's `/proc` and `/sys` filesystems — same data, zero extra processes. For Nginx and PHP-FPM, small standalone exporter binaries (`nginx-prometheus-exporter` on `:9113`, `php-fpm_exporter` on `:9253`) are needed because Alloy does not have built-in exporters for those.
 
 ### 4.3 Deploy the Alloy Configuration
 
@@ -822,7 +822,7 @@ log-monitoring/
 │           └── datasources/
 │               └── datasources.yaml   ← Auto-provisioned datasources
 ├── alloy/
-│   └── config.alloy                   ← Alloy config (built-in exporters, no standalone binaries)
+│   └── config.alloy                   ← Alloy config (system metrics built-in, Nginx/PHP-FPM via exporters)
 └── laravel/
     ├── README.md                      ← Laravel integration guide
     ├── TraceIdMiddleware.php           ← Reference: log↔trace correlation middleware
@@ -844,7 +844,7 @@ log-monitoring/
 - [ ] Nginx `stub_status` enabled on each Laravel EC2
 - [ ] PHP-FPM `pm.status_path` enabled on each Laravel EC2
 - [ ] Alloy config updated with correct LGTM server IP and unique instance names
-- [ ] Alloy service running on all 6 instances (single service — no standalone exporters)
+- [ ] Alloy service running on all 6 instances with Nginx and PHP-FPM exporters
 - [ ] OpenTelemetry packages installed in Laravel (`keepsuit/laravel-opentelemetry`)
 - [ ] `.env` updated with OTEL variables on each instance
 - [ ] TraceId middleware registered in Laravel

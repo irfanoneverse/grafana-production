@@ -7,7 +7,8 @@
 //
 // Collects: Logs (→ Loki), Metrics (→ Mimir), Traces (→ Tempo)
 //
-// KEY: No standalone exporters needed. Alloy handles everything natively.
+// KEY: System metrics are built-in. Nginx & PHP-FPM metrics come from
+//      lightweight sidecar exporters in docker-compose.yml.
 //      Your Laravel app (Nginx, PHP-FPM) keeps running via systemctl as-is.
 //
 // IMPORTANT: Replace 172.31.27.45 with the private IP of your
@@ -93,7 +94,7 @@ loki.write "loki_endpoint" {
 
 
 // ---------------------------------------------------------------------------
-// 2. METRICS — Built-in Alloy exporters (no standalone binaries needed)
+// 2. METRICS — System metrics (built-in) + Nginx/PHP-FPM (sidecar exporters)
 // ---------------------------------------------------------------------------
 
 // --- System Metrics (replaces standalone Node Exporter) ---
@@ -111,31 +112,27 @@ prometheus.scrape "system_metrics" {
   forward_to      = [prometheus.relabel.add_instance_labels.receiver]
 }
 
-// --- Nginx Metrics (replaces standalone Nginx Exporter) ---
-// Because we use host networking, Alloy can reach Nginx on 127.0.0.1:8080
-// exactly like the systemd version.
-prometheus.exporter.nginx "nginx" {
-  nginx_addr = "http://127.0.0.1:8080/nginx_status"
-}
-
+// --- Nginx Metrics ---
+// Scraped from the nginx-prometheus-exporter sidecar container (:9113).
+// The exporter reads Nginx stub_status from 127.0.0.1:8080/nginx_status
+// and converts it to Prometheus metrics.
 prometheus.scrape "nginx_metrics" {
-  targets         = prometheus.exporter.nginx.nginx.targets
+  targets = [
+    { __address__ = "127.0.0.1:9113" },
+  ]
   scrape_interval = "30s"
   job_name        = "nginx-exporter"
   forward_to      = [prometheus.relabel.add_instance_labels.receiver]
 }
 
-// --- PHP-FPM Metrics (replaces standalone PHP-FPM Exporter) ---
-// Because we use host networking, Alloy can reach the dedicated status server
-// on 127.0.0.1:8080 exactly like the systemd version.
-prometheus.exporter.php_fpm "fpm" {
-  targets = [
-    { address = "tcp://127.0.0.1:8080/fpm-status" },
-  ]
-}
-
+// --- PHP-FPM Metrics ---
+// Scraped from the php-fpm_exporter sidecar container (:9253).
+// The exporter reads PHP-FPM status from 127.0.0.1:8080/fpm-status
+// and converts it to Prometheus metrics.
 prometheus.scrape "phpfpm_metrics" {
-  targets         = prometheus.exporter.php_fpm.fpm.targets
+  targets = [
+    { __address__ = "127.0.0.1:9253" },
+  ]
   scrape_interval = "30s"
   job_name        = "phpfpm-exporter"
   forward_to      = [prometheus.relabel.add_instance_labels.receiver]
