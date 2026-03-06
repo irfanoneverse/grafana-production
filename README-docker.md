@@ -248,9 +248,11 @@ This section is **identical** to [Section 5 of the main README](README.md#5-lara
 
 ### 5.1 Install OpenTelemetry (Tracing)
 
-On each Laravel EC2, in the Laravel project directory:
+On each Laravel EC2, run as the app user (e.g., `theone`) in the Laravel project directory:
 
 ```bash
+cd /home/theone/kol
+
 # Core OpenTelemetry SDK + OTLP exporter
 composer require open-telemetry/sdk \
   open-telemetry/exporter-otlp \
@@ -263,12 +265,17 @@ composer require keepsuit/laravel-opentelemetry
 php artisan vendor:publish --provider="Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider"
 ```
 
+> **Note**: Adjust `/home/theone/kol` to your actual Laravel project path. Run as the user that owns the project directory to preserve correct file permissions.
+
 ### 5.2 Configure OpenTelemetry Environment
 
-Add these to your Laravel `.env` file (reference: [`laravel/.env.otel.example`](laravel/.env.otel.example)):
+Append the OpenTelemetry settings to your Laravel `.env` file (reference: [`laravel/.env.otel.example`](laravel/.env.otel.example)):
 
-```env
-OTEL_SERVICE_NAME=laravel-app-1
+```bash
+cat >> /home/theone/kol/.env << 'EOF'
+
+# OpenTelemetry
+OTEL_SERVICE_NAME=duadualive-staging
 OTEL_TRACES_EXPORTER=otlp
 OTEL_METRICS_EXPORTER=otlp
 OTEL_LOGS_EXPORTER=none
@@ -278,9 +285,12 @@ OTEL_PHP_AUTOLOAD_ENABLED=true
 OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production,service.namespace=laravel
 OTEL_TRACES_SAMPLER=parentbased_traceidratio
 OTEL_TRACES_SAMPLER_ARG=1.0
+EOF
 ```
 
 > **Notice**: `OTEL_EXPORTER_OTLP_ENDPOINT` still points to `http://localhost:4318` — this works because Alloy uses host networking. No change from the systemd approach.
+>
+> **Adjust** `OTEL_SERVICE_NAME` to a unique name per instance (e.g., `duadualive-staging`, `laravel-app-2`, etc.).
 
 ### 5.3 Install TraceId Middleware (Log ↔ Trace Correlation)
 
