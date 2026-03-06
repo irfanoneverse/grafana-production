@@ -330,30 +330,31 @@ curl -s http://127.0.0.1:8080/nginx_status
 
 ```bash
 # Enable the status path in PHP-FPM pool config
-sudo sed -i 's#^;*pm.status_path = .*#pm.status_path = /fpm-status.php#' /etc/php/*/fpm/pool.d/www.conf
+sudo sed -i 's#^;*pm.status_path = .*#pm.status_path = /fpm-status#' /etc/php/*/fpm/pool.d/www.conf
 sudo systemctl restart php*-fpm
 
 # Rewrite the dedicated status server so it exposes both endpoints on 127.0.0.1:8080
-# Adjust the PHP-FPM socket path and Laravel public path if your host differs.
+# IMPORTANT: Do NOT use "include fastcgi_params" here — duplicate SCRIPT_NAME values
+# cause PHP-FPM to ignore the status path. Specify only the params needed.
+# Adjust the PHP-FPM socket path if your host differs (check: ls /run/php/).
 sudo tee /etc/nginx/conf.d/stub_status.conf << 'EOF'
 server {
     listen 8080;
     server_name localhost;
-    root /var/www/html/public;
 
-    location /nginx_status {
+    location = /nginx_status {
         stub_status on;
         allow 127.0.0.1;
         deny all;
     }
 
-    location = /fpm-status.php {
-        include fastcgi_params;
-        fastcgi_pass unix:/run/php/php-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME /var/www/html/public/index.php;
-        fastcgi_param SCRIPT_NAME /fpm-status.php;
-        fastcgi_param REQUEST_URI /fpm-status.php;
-        fastcgi_param DOCUMENT_URI /fpm-status.php;
+    location = /fpm-status {
+        fastcgi_pass unix:/run/php/php-fpm.sock;    # Adjust to your PHP-FPM socket
+        fastcgi_param SCRIPT_NAME     /fpm-status;
+        fastcgi_param SCRIPT_FILENAME /fpm-status.php;
+        fastcgi_param REQUEST_URI     /fpm-status;
+        fastcgi_param QUERY_STRING    $query_string;
+        fastcgi_param REQUEST_METHOD  $request_method;
         allow 127.0.0.1;
         deny all;
     }
@@ -361,8 +362,8 @@ server {
 EOF
 sudo nginx -t && sudo systemctl reload nginx
 
-# Verify: should return PHP-FPM pool status
-curl -s http://127.0.0.1:8080/fpm-status.php
+# Verify: should return PHP-FPM pool status (pool: www, process manager: dynamic, ...)
+curl -s http://127.0.0.1:8080/fpm-status
 ```
 
 > **What about Node Exporter?** You don't need it at all. Alloy's built-in `prometheus.exporter.unix` reads directly from Linux's `/proc` and `/sys` filesystems — same data, zero extra processes.

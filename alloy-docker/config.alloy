@@ -130,7 +130,7 @@ prometheus.scrape "nginx_metrics" {
 // on 127.0.0.1:8080 exactly like the systemd version.
 prometheus.exporter.php_fpm "fpm" {
   targets = [
-    { address = "tcp://127.0.0.1:8080/fpm-status.php" },
+    { address = "tcp://127.0.0.1:8080/fpm-status" },
   ]
 }
 
