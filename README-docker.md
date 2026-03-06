@@ -496,13 +496,13 @@ From the LGTM server:
 
 ```bash
 # Query recent logs from this instance (adjust instance name to match your config)
-curl -s "http://localhost:3100/loki/api/v1/query?query={instance=%22duadualive-staging%22}&limit=5" | jq .
+curl -s 'http://localhost:3100/loki/api/v1/query?query={instance="duadualive-staging"}&limit=5' | jq .
 
 # Query metrics
-curl -s "http://localhost:9009/prometheus/api/v1/query?query=up{instance=%22duadualive-staging%22}" | jq .
+curl -s 'http://localhost:9009/prometheus/api/v1/query?query=up%7Binstance%3D%22duadualive-staging%22%7D' | jq .
 
 # Search for recent traces
-curl -s "http://localhost:3200/api/search?limit=5" | jq .
+curl -s 'http://localhost:3200/api/search?limit=5' | jq .
 ```
 
 Or verify in **Grafana UI** at `http://<LGTM-IP>:3000`:
@@ -518,7 +518,7 @@ Run this from the Laravel EC2:
 ```bash
 # Generate a test log entry
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] production.ERROR: Docker smoke test from $(hostname)" \
-  >> /var/www/html/storage/logs/laravel.log
+  >> /home/theone/kol/storage/logs/laravel.log
 
 # Generate a test trace (via OTLP HTTP)
 curl -X POST http://localhost:4318/v1/traces \

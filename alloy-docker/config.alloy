@@ -167,6 +167,7 @@ prometheus.remote_write "mimir_endpoint" {
 
 // OTLP receiver — Laravel sends traces here via the OpenTelemetry PHP extension.
 // Because we use host networking, Laravel can send to localhost:4318 as before.
+// Note: Only traces are routed. Prometheus metrics use the scrape pipeline above.
 otelcol.receiver.otlp "laravel_traces" {
   grpc {
     endpoint = "0.0.0.0:4317"
@@ -175,8 +176,7 @@ otelcol.receiver.otlp "laravel_traces" {
     endpoint = "0.0.0.0:4318"
   }
   output {
-    traces  = [otelcol.processor.attributes.default.input]
-    metrics = [otelcol.processor.batch.default.input]
+    traces = [otelcol.processor.attributes.default.input]
   }
 }
 
@@ -198,13 +198,12 @@ otelcol.processor.attributes "default" {
   }
 }
 
-// Batch traces and metrics before sending (reduces network calls)
+// Batch traces before sending (reduces network calls)
 otelcol.processor.batch "default" {
   timeout         = "5s"
   send_batch_size = 1024
   output {
-    traces  = [otelcol.exporter.otlphttp.tempo_endpoint.input]
-    metrics = [otelcol.exporter.otlphttp.tempo_endpoint.input]
+    traces = [otelcol.exporter.otlphttp.tempo_endpoint.input]
   }
 }
 
