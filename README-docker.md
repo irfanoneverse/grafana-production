@@ -456,9 +456,9 @@ docker compose ps
 # Check for errors in the logs
 docker compose logs --tail=50 alloy
 
-# Alloy readiness check
-curl -s http://localhost:12345/ready
-# Expected: "ready"
+# Alloy readiness check (returns HTML if running)
+curl -s http://localhost:12345/ | head -1
+# Expected: <!doctype html>...
 ```
 
 ### 8.2 Verify System Metrics Are Being Collected
