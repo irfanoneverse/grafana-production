@@ -63,7 +63,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "wget --no-verbose --tries=1 -O /dev/null http://localhost:12345/ || exit 1",
+          "wget --no-verbose --tries=1 -O /dev/null http://127.0.0.1:12345/-/ready || exit 1",
         ]
       interval: 15s
       timeout: 5s
