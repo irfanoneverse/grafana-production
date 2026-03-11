@@ -492,7 +492,7 @@ Add these to your Laravel `.env` file (reference: [`laravel/.env.otel.example`](
 ```env
 OTEL_SERVICE_NAME=laravel-app-1
 OTEL_TRACES_EXPORTER=otlp
-OTEL_METRICS_EXPORTER=otlp
+OTEL_METRICS_EXPORTER=none
 OTEL_LOGS_EXPORTER=none
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
@@ -506,6 +506,7 @@ OTEL_TRACES_SAMPLER_ARG=1.0
 | ----------------------------- | ------------------------------------------------------------ |
 | `OTEL_SERVICE_NAME`           | Identifies this instance in Tempo (change per EC2)           |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Points to Alloy's local OTLP receiver                        |
+| `OTEL_METRICS_EXPORTER=none`  | Metrics come from sidecar exporters, not OTLP (avoids 404s) |
 | `OTEL_LOGS_EXPORTER=none`     | Logs go via Alloy file tailing, not OTLP                     |
 | `OTEL_TRACES_SAMPLER_ARG`     | `1.0` = 100% of requests traced. Lower for high-traffic apps |
 

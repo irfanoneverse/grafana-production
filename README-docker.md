@@ -285,7 +285,7 @@ cat >> /home/theone/kol/.env << 'EOF'
 # OpenTelemetry
 OTEL_SERVICE_NAME=duadualive-staging
 OTEL_TRACES_EXPORTER=otlp
-OTEL_METRICS_EXPORTER=otlp
+OTEL_METRICS_EXPORTER=none
 OTEL_LOGS_EXPORTER=none
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
