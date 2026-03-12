@@ -154,6 +154,38 @@ curl -s http://127.0.0.1:8080/fpm-status
 > - `502 Bad Gateway` → PHP-FPM socket path is wrong. Check `ls /run/php/` for the actual socket file (e.g., `php8.3-fpm.sock`)
 > - `location directive not allowed here` → The `location` block must be inside a `server {}` block
 
+### 3.4 Special Handling: Multiple PHP-FPM Versions
+
+If you have multiple PHP versions (e.g., 8.3 and 8.4), follow these steps to ensure the correct status page is scraped:
+
+**Step 1: Enable status path for all relevant versions**
+```bash
+# Enable in 8.3
+sudo sed -i 's/^;\(pm\.status_path\)/\1/' /etc/php/8.3/fpm/pool.d/www.conf
+sudo systemctl restart php8.3-fpm
+
+# Enable in 8.4
+sudo sed -i 's/^;\(pm\.status_path\)/\1/' /etc/php/8.4/fpm/pool.d/www.conf
+sudo systemctl restart php8.4-fpm
+```
+
+**Step 2: Update Nginx to point to the active socket**
+Check which socket your app uses (`ls /run/php/`) and update `/etc/nginx/conf.d/stub_status.conf`:
+```bash
+# Example: Point to PHP 8.3
+sudo sed -i 's#unix:/run/php/php-fpm.sock#unix:/run/php/php8.3-fpm.sock#' /etc/nginx/conf.d/stub_status.conf
+sudo nginx -t && sudo systemctl reload nginx
+
+# Example: Switch to PHP 8.4
+sudo sed -i 's#unix:/run/php/php8.3-fpm.sock#unix:/run/php/php8.4-fpm.sock#' /etc/nginx/conf.d/stub_status.conf
+sudo systemctl reload nginx
+```
+
+**Step 3: Verify**
+```bash
+curl -s http://127.0.0.1:8080/fpm-status
+```
+
 ---
 
 ## 4. Deploy the Monitoring Agent
@@ -273,7 +305,7 @@ composer require keepsuit/laravel-opentelemetry
 php artisan vendor:publish --provider="Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider"
 ```
 
-> **Note**: Adjust `/home/theone/kol` to your actual Laravel project path. Run as the user that owns the project directory to preserve correct file permissions.
+> **Note**: Adjust `/data/sso-api` to your actual Laravel project path. Run as the user that owns the project directory to preserve correct file permissions.
 
 ### 5.2 Configure OpenTelemetry Environment
 
@@ -325,6 +357,30 @@ protected $middleware = [
 ```
 
 > See [`laravel/README.md`](laravel/README.md) for the complete Laravel integration guide.
+
+### 5.4 Automated Deployment (Middleware Injection)
+
+To quickly deploy the middleware across your nodes, you can use these commands in your project root (`/data/sso-api`):
+
+```bash
+# 1. Copy the middleware
+mkdir -p app/Http/Middleware
+cp /opt/monitoring/laravel/TraceIdMiddleware.php app/Http/Middleware/TraceIdMiddleware.php
+
+# 2. Inject into the application structure
+if [ -f "bootstrap/app.php" ]; then
+    echo "Detected Laravel 11 structure (bootstrap/app.php)"
+    sed -i '/->withMiddleware(function (Middleware $middleware) {/a \        $middleware->append(\\App\\Http\\Middleware\\TraceIdMiddleware::class);' bootstrap/app.php
+elif [ -f "app/Http/Kernel.php" ]; then
+    echo "Detected Laravel 10 structure (app/Http/Kernel.php)"
+    sed -i '/protected $middleware = \[/a \        \\App\\Http\\Middleware\\TraceIdMiddleware::class,' app/Http/Kernel.php
+else
+    echo "Middleware file not found. Manual update required."
+fi
+
+# 3. Clear configuration cache
+php artisan config:clear
+```
 
 ---
 
@@ -584,9 +640,9 @@ stage.timestamp {
 
 ### 9.2 Permission Denied Writing Test Log Entries
 
-**Symptom**: `bash: /home/theone/kol/storage/logs/laravel.log: Permission denied`
+**Symptom**: `bash: /data/sso-api/storage/logs/laravel.log: Permission denied`
 
-**Cause**: Log files are owned by the Laravel app user (e.g., `theone`), not the `ubuntu` SSH user.
+**Cause**: Log files are owned by the Laravel app user (e.g., `www-data` or your deploy user), not the `ubuntu` SSH user.
 
 **Fix**: Use `sudo -u` to write as the app user:
 
@@ -607,44 +663,48 @@ cannot find the definition of component name "prometheus.exporter.php_fpm"
 
 **Fix**: Use the sidecar exporter containers in `docker-compose.yml` (already included). Alloy scrapes them via `prometheus.scrape` on `:9113` (Nginx) and `:9253` (PHP-FPM).
 
-### 9.4 Backfilling Historical Logs
+### 9.4 Pulling Past History Logs into Loki
 
-By default, `tail_from_end = true` means Alloy only reads **new** log lines. For the `sso-api-staging` setup, this is currently set to `false` to ingest past history logs. 
+By default, `tail_from_end = true` means Alloy only reads **new** log lines. If you need to ingest the historical logs (e.g., for `sso-api-staging` initial setup), follow this sequence:
 
-To ingest historical logs:
-
-1. **On the LGTM server** — increase Loki's max age for old entries in `loki-config.yaml`:
-
-```yaml
-limits_config:
-  reject_old_samples_max_age: 4380h   # ~6 months
+**Step 1: Set Alloy to read from start**
+In `alloy-docker/config.alloy`, set:
+```alloy
+tail_from_end = false
 ```
 
-Restart Loki: `docker compose restart loki`
-
-2. **On the Laravel EC2** — temporarily change Alloy and clear its position file:
-
+**Step 2: Reset the "Bookmark" (Position File)**
+Alloy remembers where it stopped via a position file stored in a Docker volume. To reset it:
 ```bash
-# Edit config.alloy: change tail_from_end = true → false
 cd /opt/monitoring/alloy-docker
 
-# Remove volume (clears position tracking) and restart
-docker compose down -v
-docker compose up -d
+# Stop the containers
+docker compose down
 
-# Watch progress — should see "Seeked ... Offset:0"
-docker compose logs -f alloy 2>&1 | head -50
+# Delete the position data volume (clears the bookmark)
+docker run --rm -v alloy-docker_alloy-data:/data alpine sh -c "rm -rf /data/*"
 ```
 
-3. **After backfill completes** (1-2 minutes for typical log sizes):
-
+**Step 3: Start Ingestion**
 ```bash
-# Change tail_from_end back to true in config.alloy
-# Then restart (do NOT use -v this time):
+docker compose up -d
+
+# Monitor the progress (should see old logs being processed)
+docker compose logs -f alloy
+```
+Once the logs from "today" appear in Grafana, the backfill is complete.
+
+**Step 4: Restore Normal Mode**
+To prevent accidental re-ingestion if the volume is ever lost, change `alloy-docker/config.alloy` back to:
+```alloy
+tail_from_end = true
+```
+Then restart without clearing data:
+```bash
 docker compose restart alloy
 ```
 
-> ⚠️ Loki's `reject_old_samples_max_age` limits how far back you can go. Logs older than this age will be silently rejected.
+> ⚠️ **Note**: Logs older than the `reject_old_samples_max_age` configured on the Loki server (default is often 7 days/168h) will be silently rejected. Ensure your Loki server config allows the age of logs you are trying to backfill.
 
 ### 9.5 Useful Loki Queries
 
