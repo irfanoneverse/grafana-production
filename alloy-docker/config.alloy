@@ -11,7 +11,7 @@
 //      lightweight sidecar exporters in docker-compose.yml.
 //      Your Laravel app (Nginx, PHP-FPM) keeps running via systemctl as-is.
 //
-// IMPORTANT: Replace 172.31.27.45 with the private IP of your
+// IMPORTANT: Replace 172.31.24.243 with the private IP of your
 //            observability EC2 (e.g., 10.0.1.50).
 // =============================================================================
 
@@ -23,7 +23,7 @@
 local.file_match "laravel_logs" {
   path_targets = [
     // Laravel application log (mounted from host)
-    { __path__ = "/data/sso-api/storage/logs/*.log", job = "laravel", app = "laravel" },
+    { __path__ = "/home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs/*.log", job = "laravel", app = "laravel" },
     // Nginx access and error logs (mounted from host)
     { __path__ = "/var/log/nginx/access.log", job = "nginx", app = "nginx" },
     { __path__ = "/var/log/nginx/error.log",  job = "nginx", app = "nginx" },
@@ -49,7 +49,7 @@ loki.process "laravel_pipeline" {
     values = {
       hostname = env("HOSTNAME"),
       // Change this per instance to identify each Laravel app
-      instance = "sso-api-staging",
+      instance = "core-payment",
     }
   }
 
@@ -102,7 +102,7 @@ loki.process "laravel_pipeline" {
 // Write logs to the central Loki instance
 loki.write "loki_endpoint" {
   endpoint {
-    url = "http://172.31.27.45:3100/loki/api/v1/push"
+    url = "http://172.31.24.243:3100/loki/api/v1/push"
   }
 }
 
@@ -159,7 +159,7 @@ prometheus.relabel "add_instance_labels" {
 
   rule {
     target_label = "instance"
-    replacement  = "sso-api-staging"   // Change per instance
+    replacement  = "core-payment"   // Change per instance
   }
   rule {
     target_label = "environment"
@@ -170,7 +170,7 @@ prometheus.relabel "add_instance_labels" {
 // Remote write metrics to the central Mimir instance
 prometheus.remote_write "mimir_endpoint" {
   endpoint {
-    url = "http://172.31.27.45:9009/api/v1/push"
+    url = "http://172.31.24.243:9009/api/v1/push"
   }
 }
 
@@ -224,7 +224,7 @@ otelcol.processor.batch "default" {
 // Export traces to central Tempo over OTLP HTTP
 otelcol.exporter.otlphttp "tempo_endpoint" {
   client {
-    endpoint = "http://172.31.27.45:4318"
+    endpoint = "http://172.31.24.243:4318"
     tls {
       insecure = true
     }

@@ -213,8 +213,8 @@ Replace these placeholders:
 
 | Placeholder                  | Replace With                      | Example                                 |
 | ---------------------------- | --------------------------------- | --------------------------------------- |
-| `LGTM_SERVER_PRIVATE_IP`     | Your LGTM server's private IP     | `172.31.27.45`                          |
-| `instance = "laravel-app-1"` | Unique name for this EC2          | `sso-api-staging`, `duadualive-staging` |
+| `LGTM_SERVER_PRIVATE_IP`     | Your LGTM server's private IP     | `172.31.24.243`                          |
+| `instance = "laravel-app-1"` | Unique name for this EC2          | `core-payment`, `duadualive-staging` |
 | `location = "Asia/Kuala_Lumpur"` | Your server's timezone (IANA) | `Asia/Singapore`, `UTC`, `America/New_York` |
 
 > **There are 3 places** where you need to replace `LGTM_SERVER_PRIVATE_IP`:
@@ -232,12 +232,12 @@ Replace these placeholders:
 
 ### 4.3 Verify Log Paths
 
-Make sure the Laravel log directory path matches your actual setup. The default config uses `/data/sso-api/storage/logs/` — update if your app is in a different location:
+Make sure the Laravel log directory path matches your actual setup. The default config uses `/home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs/` — update if your app is in a different location:
 
 ```bash
 # Find your Laravel project root (look for artisan, storage/, public/)
 # Common locations: /home/<user>/<app>, /var/www/html, /var/www/<app>
-ls -la /data/sso-api/storage/logs/
+ls -la /home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs/
 
 # If your path is DIFFERENT, update these 2 files:
 # 1. config.alloy → local.file_match "laravel_logs" → __path__
@@ -245,7 +245,7 @@ ls -la /data/sso-api/storage/logs/
 #
 # Example: if your app is at /var/www/myapp, change:
 #   config.alloy:        "/var/www/myapp/storage/logs/*.log"
-#    docker-compose.yml:  /data/sso-api/storage/logs:/data/sso-api/storage/logs:ro
+#    docker-compose.yml:  /home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs:/home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs:ro
 ```
 
 ### 4.4 Start the Monitoring Agent
@@ -293,7 +293,7 @@ This section is **identical** to [Section 5 of the main README](README.md#5-lara
 On each Laravel EC2, run as the app user in the Laravel project directory:
 
 ```bash
-cd /data/sso-api
+cd /home/forge/payment-api-ookwuvmk.on-forge.com
 
 # Core OpenTelemetry SDK + OTLP exporter
 composer require open-telemetry/sdk open-telemetry/exporter-otlp
@@ -305,17 +305,17 @@ composer require keepsuit/laravel-opentelemetry
 php artisan vendor:publish --provider="Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider"
 ```
 
-> **Note**: Adjust `/data/sso-api` to your actual Laravel project path. Run as the user that owns the project directory to preserve correct file permissions.
+> **Note**: Adjust `/home/forge/payment-api-ookwuvmk.on-forge.com` to your actual Laravel project path. Run as the user that owns the project directory to preserve correct file permissions.
 
 ### 5.2 Configure OpenTelemetry Environment
 
 Append the OpenTelemetry settings to your Laravel `.env` file (reference: [`laravel/.env.otel.example`](laravel/.env.otel.example)):
 
 ```bash
-cat >> /data/sso-api/.env << 'EOF'
+cat >> /home/forge/payment-api-ookwuvmk.on-forge.com/.env << 'EOF'
 
 # OpenTelemetry
-OTEL_SERVICE_NAME=sso-api-staging
+OTEL_SERVICE_NAME=core-payment
 OTEL_TRACES_EXPORTER=otlp
 OTEL_METRICS_EXPORTER=none
 OTEL_LOGS_EXPORTER=none
@@ -330,13 +330,13 @@ EOF
 
 > **Notice**: `OTEL_EXPORTER_OTLP_ENDPOINT` still points to `http://localhost:4318` — this works because Alloy uses host networking. No change from the systemd approach.
 >
-> **Adjust** `OTEL_SERVICE_NAME` to a unique name per instance (e.g., `sso-api-staging`, `duadualive-staging`, etc.).
+> **Adjust** `OTEL_SERVICE_NAME` to a unique name per instance (e.g., `core-payment`, `duadualive-staging`, etc.).
 
 ### 5.3 Install TraceId Middleware (Log ↔ Trace Correlation)
 
 ```bash
 # Copy the reference middleware (adjust the destination to your Laravel project path)
-cp laravel/TraceIdMiddleware.php /data/sso-api/app/Http/Middleware/TraceIdMiddleware.php
+cp laravel/TraceIdMiddleware.php /home/forge/payment-api-ookwuvmk.on-forge.com/app/Http/Middleware/TraceIdMiddleware.php
 ```
 
 Register it in `bootstrap/app.php` (Laravel 11+):
@@ -360,7 +360,7 @@ protected $middleware = [
 
 ### 5.4 Automated Deployment (Middleware Injection)
 
-To quickly deploy the middleware across your nodes, you can use these commands in your project root (`/data/sso-api`):
+To quickly deploy the middleware across your nodes, you can use these commands in your project root (`/home/forge/payment-api-ookwuvmk.on-forge.com`):
 
 ```bash
 # 1. Copy the middleware
@@ -562,10 +562,10 @@ From the LGTM server:
 
 ```bash
 # Query recent logs from this instance (adjust instance name to match your config)
-curl -s 'http://localhost:3100/loki/api/v1/query?query={instance="sso-api-staging"}&limit=5' | jq .
+curl -s 'http://localhost:3100/loki/api/v1/query?query={instance="core-payment"}&limit=5' | jq .
 
 # Query metrics
-curl -s 'http://localhost:9009/prometheus/api/v1/query?query=up%7Binstance%3D%22sso-api-staging%22%7D' | jq .
+curl -s 'http://localhost:9009/prometheus/api/v1/query?query=up%7Binstance%3D%22core-payment%22%7D' | jq .
 
 # Search for recent traces
 curl -s 'http://localhost:3200/api/search?limit=5' | jq .
@@ -573,8 +573,8 @@ curl -s 'http://localhost:3200/api/search?limit=5' | jq .
 
 Or verify in **Grafana UI** at `http://<LGTM-IP>:3000`:
 
-1. **Explore → Loki** → `{instance="sso-api-staging"}` → should see log entries
-2. **Explore → Mimir** → `up{instance="sso-api-staging"}` → should show `1`
+1. **Explore → Loki** → `{instance="core-payment"}` → should see log entries
+2. **Explore → Mimir** → `up{instance="core-payment"}` → should show `1`
 3. **Explore → Tempo** → Search → should see traces (after OpenTelemetry is configured)
 
 ### 8.5 End-to-End Smoke Test
@@ -583,7 +583,7 @@ Run this from the Laravel EC2:
 
 ```bash
 # Generate a test log entry (use sudo -u to match the Laravel app's file owner)
-sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Docker smoke test from '"$(hostname)"'" >> /data/sso-api/storage/logs/laravel.log'
+sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Docker smoke test from '"$(hostname)"'" >> /home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs/laravel.log'
 
 # Generate a test trace (via OTLP HTTP)
 curl -X POST http://localhost:4318/v1/traces \
@@ -640,14 +640,14 @@ stage.timestamp {
 
 ### 9.2 Permission Denied Writing Test Log Entries
 
-**Symptom**: `bash: /data/sso-api/storage/logs/laravel.log: Permission denied`
+**Symptom**: `bash: /home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs/laravel.log: Permission denied`
 
 **Cause**: Log files are owned by the Laravel app user (e.g., `www-data` or your deploy user), not the `ubuntu` SSH user.
 
 **Fix**: Use `sudo -u` to write as the app user:
 
 ```bash
-sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Test" >> /data/sso-api/storage/logs/laravel.log'
+sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Test" >> /home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs/laravel.log'
 ```
 
 ### 9.3 Alloy Shows "component does not exist" for Nginx/PHP-FPM
@@ -665,7 +665,7 @@ cannot find the definition of component name "prometheus.exporter.php_fpm"
 
 ### 9.4 Pulling Past History Logs into Loki
 
-By default, `tail_from_end = true` means Alloy only reads **new** log lines. If you need to ingest the historical logs (e.g., for `sso-api-staging` initial setup), follow this sequence:
+By default, `tail_from_end = true` means Alloy only reads **new** log lines. If you need to ingest the historical logs (e.g., for `core-payment` initial setup), follow this sequence:
 
 **Step 1: Set Alloy to read from start**
 In `alloy-docker/config.alloy`, set:

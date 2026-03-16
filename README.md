@@ -431,7 +431,7 @@ curl -s http://127.0.0.1:9253/metrics | head -5
 sudo cp alloy/config.alloy /etc/alloy/config.alloy
 
 # CRITICAL: Edit the config and replace these placeholders:
-#   - LGTM_SERVER_PRIVATE_IP → your LGTM server's private IP (e.g., 172.31.27.45)
+#   - LGTM_SERVER_PRIVATE_IP → your LGTM server's private IP (e.g., 172.31.24.243)
 #   - instance = "laravel-app-1" → unique name per EC2 (e.g., duadualive-staging)
 #   - location = "Asia/Kuala_Lumpur" → your server's IANA timezone
 #   - Laravel log path → adjust if your app is not at /var/www/html
@@ -516,7 +516,7 @@ This middleware injects the trace ID into every log entry, enabling one-click na
 
 ```bash
 # Copy the reference middleware (adjust path to your Laravel project)
-cp laravel/TraceIdMiddleware.php /data/sso-api/app/Http/Middleware/TraceIdMiddleware.php
+cp laravel/TraceIdMiddleware.php /home/forge/payment-api-ookwuvmk.on-forge.com/app/Http/Middleware/TraceIdMiddleware.php
 ```
 
 Register it in `bootstrap/app.php` (Laravel 11+):
@@ -786,7 +786,7 @@ Run this from any Laravel EC2 to generate test data:
 
 ```bash
 # Generate a test log entry (use sudo -u to match the Laravel app's file owner)
-sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Smoke test from '"$(hostname)"'" >> /data/sso-api/storage/logs/laravel.log'
+sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Smoke test from '"$(hostname)"'" >> /home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs/laravel.log'
 
 # Generate a test trace (via OTLP HTTP directly)
 curl -X POST http://localhost:4318/v1/traces \
@@ -920,7 +920,7 @@ stage.timestamp {
 **Fix**: Use `sudo -u <appuser>` when writing test entries to Laravel log files:
 
 ```bash
-sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Test" >> /data/sso-api/storage/logs/laravel.log'
+sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Test" >> /home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs/laravel.log'
 ```
 
 ### 9.4 No Data in Grafana

@@ -35,7 +35,7 @@ Copy the variables from [`.env.otel.example`](.env.otel.example) into your Larav
 
 ```bash
 # Adjust the path to your Laravel project directory
-cat .env.otel.example >> /data/sso-api/.env
+cat .env.otel.example >> /home/forge/payment-api-ookwuvmk.on-forge.com/.env
 ```
 
 Then edit `OTEL_SERVICE_NAME` to match the instance (e.g., `duadualive-staging`, `laravel-app-2`).
@@ -46,7 +46,7 @@ Copy [`TraceIdMiddleware.php`](TraceIdMiddleware.php) to your app:
 
 ```bash
 # Adjust the path to your Laravel project directory
-cp TraceIdMiddleware.php /data/sso-api/app/Http/Middleware/TraceIdMiddleware.php
+cp TraceIdMiddleware.php /home/forge/payment-api-ookwuvmk.on-forge.com/app/Http/Middleware/TraceIdMiddleware.php
 ```
 
 Register it in `bootstrap/app.php` (Laravel 11+):
