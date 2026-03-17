@@ -39,7 +39,7 @@ loki.source.file "log_scrape" {
   targets    = local.file_match.laravel_logs.targets
   forward_to = [loki.process.laravel_pipeline.receiver]
 
-  tail_from_end = true
+  tail_from_end = false
 }
 
 // Process logs: add labels, parse Laravel log format
