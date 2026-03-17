@@ -55,7 +55,7 @@ services:
       - /sys:/host/sys:ro
       - /:/host/root:ro
       # Laravel log files (read-only)
-      - /home/forge/payment-api-ookwuvmk.on-forge.com/current/storage/logs:/home/forge/payment-api-ookwuvmk.on-forge.com/current/storage/logs:ro
+      - /home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs:/home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs:ro
       # Nginx and PHP-FPM logs (read-only)
       - /var/log/nginx:/var/log/nginx:ro
       - /var/log:/var/log:ro

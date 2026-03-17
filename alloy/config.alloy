@@ -19,7 +19,7 @@
 local.file_match "laravel_logs" {
   path_targets = [
     // Laravel application log — adjust path to your Laravel project
-    { __path__ = "/home/forge/payment-api-ookwuvmk.on-forge.com/current/storage/logs/*.log", job = "laravel", app = "laravel" },
+    { __path__ = "/home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs/*.log", job = "laravel", app = "laravel" },
     // Nginx access and error logs
     { __path__ = "/var/log/nginx/access.log", job = "nginx", app = "nginx" },
     { __path__ = "/var/log/nginx/error.log",  job = "nginx", app = "nginx" },
@@ -45,7 +45,7 @@ loki.process "laravel_pipeline" {
     values = {
       hostname = env("HOSTNAME"),
       // Change this per instance to identify each Laravel app
-      instance = "core-payment",
+      instance = "core-games",
     }
   }
 
@@ -157,7 +157,7 @@ prometheus.relabel "add_instance_labels" {
 
   rule {
     target_label = "instance"
-    replacement  = "core-payment"   // Change per instance
+    replacement  = "core-games"   // Change per instance
   }
   rule {
     target_label = "environment"

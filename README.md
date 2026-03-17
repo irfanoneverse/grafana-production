@@ -516,7 +516,7 @@ This middleware injects the trace ID into every log entry, enabling one-click na
 
 ```bash
 # Copy the reference middleware (adjust path to your Laravel project)
-cp laravel/TraceIdMiddleware.php /home/forge/payment-api-ookwuvmk.on-forge.com/current/app/Http/Middleware/TraceIdMiddleware.php
+cp laravel/TraceIdMiddleware.php /home/forge/southbound-api-qlmdtqda.on-forge.com/current/app/Http/Middleware/TraceIdMiddleware.php
 ```
 
 Register it in `bootstrap/app.php` (Laravel 11+):
@@ -786,7 +786,7 @@ Run this from any Laravel EC2 to generate test data:
 
 ```bash
 # Generate a test log entry (use sudo -u to match the Laravel app's file owner)
-sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Smoke test from '"$(hostname)"'" >> /home/forge/payment-api-ookwuvmk.on-forge.com/current/storage/logs/laravel.log'
+sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Smoke test from '"$(hostname)"'" >> /home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs/laravel.log'
 
 # Generate a test trace (via OTLP HTTP directly)
 curl -X POST http://localhost:4318/v1/traces \
@@ -920,7 +920,7 @@ stage.timestamp {
 **Fix**: Use `sudo -u <appuser>` when writing test entries to Laravel log files:
 
 ```bash
-sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Test" >> /home/forge/payment-api-ookwuvmk.on-forge.com/current/storage/logs/laravel.log'
+sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Test" >> /home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs/laravel.log'
 ```
 
 ### 9.4 No Data in Grafana
