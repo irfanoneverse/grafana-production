@@ -23,7 +23,7 @@
 local.file_match "laravel_logs" {
   path_targets = [
     // Laravel application log (mounted from host)
-    { __path__ = "/home/forge/payment-api-ookwuvmk.on-forge.com/storage/logs/*.log", job = "laravel", app = "laravel" },
+    { __path__ = "/home/forge/payment-api-ookwuvmk.on-forge.com/current/storage/logs/*.log", job = "laravel", app = "laravel" },
     // Nginx access and error logs (mounted from host)
     { __path__ = "/var/log/nginx/access.log", job = "nginx", app = "nginx" },
     { __path__ = "/var/log/nginx/error.log",  job = "nginx", app = "nginx" },
