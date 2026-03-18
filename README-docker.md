@@ -214,7 +214,7 @@ Replace these placeholders:
 | Placeholder                  | Replace With                      | Example                                 |
 | ---------------------------- | --------------------------------- | --------------------------------------- |
 | `LGTM_SERVER_PRIVATE_IP`     | Your LGTM server's private IP     | `172.31.24.243`                          |
-| `instance = "laravel-app-1"` | Unique name for this EC2          | `core-games`, `duadualive-staging` |
+| `instance = "laravel-app-1"` | Unique name for this EC2          | `core-gateway`, `duadualive-staging` |
 | `location = "Asia/Kuala_Lumpur"` | Your server's timezone (IANA) | `Asia/Singapore`, `UTC`, `America/New_York` |
 
 > **There are 3 places** where you need to replace `LGTM_SERVER_PRIVATE_IP`:
@@ -315,7 +315,7 @@ Append the OpenTelemetry settings to your Laravel `.env` file (reference: [`lara
 cat >> /home/forge/southbound-api-qlmdtqda.on-forge.com/current/.env << 'EOF'
 
 # OpenTelemetry
-OTEL_SERVICE_NAME=core-games
+OTEL_SERVICE_NAME=core-gateway
 OTEL_TRACES_EXPORTER=otlp
 OTEL_METRICS_EXPORTER=none
 OTEL_LOGS_EXPORTER=none
@@ -330,7 +330,7 @@ EOF
 
 > **Notice**: `OTEL_EXPORTER_OTLP_ENDPOINT` still points to `http://localhost:4318` — this works because Alloy uses host networking. No change from the systemd approach.
 >
-> **Adjust** `OTEL_SERVICE_NAME` to a unique name per instance (e.g., `core-games`, `duadualive-staging`, etc.).
+> **Adjust** `OTEL_SERVICE_NAME` to a unique name per instance (e.g., `core-gateway`, `duadualive-staging`, etc.).
 
 ### 5.3 Install TraceId Middleware (Log ↔ Trace Correlation)
 
@@ -562,10 +562,10 @@ From the LGTM server:
 
 ```bash
 # Query recent logs from this instance (adjust instance name to match your config)
-curl -s 'http://localhost:3100/loki/api/v1/query?query={instance="core-games"}&limit=5' | jq .
+curl -s 'http://localhost:3100/loki/api/v1/query?query={instance="core-gateway"}&limit=5' | jq .
 
 # Query metrics
-curl -s 'http://localhost:9009/prometheus/api/v1/query?query=up%7Binstance%3D%22core-games%22%7D' | jq .
+curl -s 'http://localhost:9009/prometheus/api/v1/query?query=up%7Binstance%3D%22core-gateway%22%7D' | jq .
 
 # Search for recent traces
 curl -s 'http://localhost:3200/api/search?limit=5' | jq .
@@ -573,8 +573,8 @@ curl -s 'http://localhost:3200/api/search?limit=5' | jq .
 
 Or verify in **Grafana UI** at `http://<LGTM-IP>:3000`:
 
-1. **Explore → Loki** → `{instance="core-games"}` → should see log entries
-2. **Explore → Mimir** → `up{instance="core-games"}` → should show `1`
+1. **Explore → Loki** → `{instance="core-gateway"}` → should see log entries
+2. **Explore → Mimir** → `up{instance="core-gateway"}` → should show `1`
 3. **Explore → Tempo** → Search → should see traces (after OpenTelemetry is configured)
 
 ### 8.5 End-to-End Smoke Test
@@ -665,7 +665,7 @@ cannot find the definition of component name "prometheus.exporter.php_fpm"
 
 ### 9.4 Pulling Past History Logs into Loki
 
-By default, `tail_from_end = true` means Alloy only reads **new** log lines. If you need to ingest the historical logs (e.g., for `core-games` initial setup), follow this sequence:
+By default, `tail_from_end = true` means Alloy only reads **new** log lines. If you need to ingest the historical logs (e.g., for `core-gateway` initial setup), follow this sequence:
 
 **Step 1: Set Alloy to read from start**
 In `alloy-docker/config.alloy`, set:

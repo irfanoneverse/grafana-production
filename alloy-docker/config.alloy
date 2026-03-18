@@ -23,7 +23,7 @@
 local.file_match "laravel_logs" {
   path_targets = [
     // Laravel application log (mounted from host)
-    { __path__ = "/home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs/*.log", job = "laravel", app = "laravel" },
+    { __path__ = "/home/forge/gateway.oneone.com/current/storage/logs/*.log", job = "laravel", app = "laravel" },
     // Nginx access and error logs (mounted from host)
     { __path__ = "/var/log/nginx/access.log", job = "nginx", app = "nginx" },
     { __path__ = "/var/log/nginx/error.log",  job = "nginx", app = "nginx" },
@@ -49,7 +49,7 @@ loki.process "laravel_pipeline" {
     values = {
       hostname = env("HOSTNAME"),
       // Change this per instance to identify each Laravel app
-      instance = "core-games",
+      instance = "core-gateway",
     }
   }
 
@@ -159,7 +159,7 @@ prometheus.relabel "add_instance_labels" {
 
   rule {
     target_label = "instance"
-    replacement  = "core-games"   // Change per instance
+    replacement  = "core-gateway"   // Change per instance
   }
   rule {
     target_label = "environment"
