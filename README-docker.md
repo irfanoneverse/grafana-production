@@ -232,12 +232,12 @@ Replace these placeholders:
 
 ### 4.3 Verify Log Paths
 
-Make sure the Laravel log directory path matches your actual setup. The default config uses `/home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs/` — update if your app is in a different location:
+Make sure the Laravel log directory path matches your actual setup. The default config uses `/home/forge/gateway.oneone.com/current/storage/logs/` — update if your app is in a different location:
 
 ```bash
 # Find your Laravel project root (look for artisan, storage/, public/)
 # Common locations: /home/<user>/<app>, /var/www/html, /var/www/<app>
-ls -la /home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs/
+ls -la /home/forge/gateway.oneone.com/current/storage/logs/
 
 # If your path is DIFFERENT, update these 2 files:
 # 1. config.alloy → local.file_match "laravel_logs" → __path__
@@ -245,7 +245,7 @@ ls -la /home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs/
 #
 # Example: if your app is at /var/www/myapp, change:
 #   config.alloy:        "/var/www/myapp/storage/logs/*.log"
-#    docker-compose.yml:  /home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs:/home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs:ro
+#    docker-compose.yml:  /home/forge/gateway.oneone.com/current/storage/logs:/home/forge/gateway.oneone.com/current/storage/logs:ro
 ```
 
 ### 4.4 Start the Monitoring Agent
@@ -293,7 +293,7 @@ This section is **identical** to [Section 5 of the main README](README.md#5-lara
 On each Laravel EC2, run as the app user in the Laravel project directory:
 
 ```bash
-cd /home/forge/southbound-api-qlmdtqda.on-forge.com/current
+cd /home/forge/gateway.oneone.com/current
 
 # Core OpenTelemetry SDK + OTLP exporter
 composer require open-telemetry/sdk open-telemetry/exporter-otlp
@@ -305,14 +305,14 @@ composer require keepsuit/laravel-opentelemetry
 php artisan vendor:publish --provider="Keepsuit\LaravelOpenTelemetry\LaravelOpenTelemetryServiceProvider"
 ```
 
-> **Note**: Adjust `/home/forge/southbound-api-qlmdtqda.on-forge.com/current` to your actual Laravel project path. Run as the user that owns the project directory to preserve correct file permissions.
+> **Note**: Adjust `/home/forge/gateway.oneone.com/current` to your actual Laravel project path. Run as the user that owns the project directory to preserve correct file permissions.
 
 ### 5.2 Configure OpenTelemetry Environment
 
 Append the OpenTelemetry settings to your Laravel `.env` file (reference: [`laravel/.env.otel.example`](laravel/.env.otel.example)):
 
 ```bash
-cat >> /home/forge/southbound-api-qlmdtqda.on-forge.com/current/.env << 'EOF'
+cat >> /home/forge/gateway.oneone.com/current/.env << 'EOF'
 
 # OpenTelemetry
 OTEL_SERVICE_NAME=core-gateway
@@ -336,7 +336,7 @@ EOF
 
 ```bash
 # Copy the reference middleware (adjust the destination to your Laravel project path)
-cp laravel/TraceIdMiddleware.php /home/forge/southbound-api-qlmdtqda.on-forge.com/current/app/Http/Middleware/TraceIdMiddleware.php
+cp laravel/TraceIdMiddleware.php /home/forge/gateway.oneone.com/current/app/Http/Middleware/TraceIdMiddleware.php
 ```
 
 Register it in `bootstrap/app.php` (Laravel 11+):
@@ -360,7 +360,7 @@ protected $middleware = [
 
 ### 5.4 Automated Deployment (Middleware Injection)
 
-To quickly deploy the middleware across your nodes, you can use these commands in your project root (`/home/forge/southbound-api-qlmdtqda.on-forge.com/current`):
+To quickly deploy the middleware across your nodes, you can use these commands in your project root (`/home/forge/gateway.oneone.com/current`):
 
 ```bash
 # 1. Copy the middleware
@@ -583,7 +583,7 @@ Run this from the Laravel EC2:
 
 ```bash
 # Generate a test log entry (use sudo -u to match the Laravel app's file owner)
-sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Docker smoke test from '"$(hostname)"'" >> /home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs/laravel.log'
+sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Docker smoke test from '"$(hostname)"'" >> /home/forge/gateway.oneone.com/current/storage/logs/laravel.log'
 
 # Generate a test trace (via OTLP HTTP)
 curl -X POST http://localhost:4318/v1/traces \
@@ -640,14 +640,14 @@ stage.timestamp {
 
 ### 9.2 Permission Denied Writing Test Log Entries
 
-**Symptom**: `bash: /home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs/laravel.log: Permission denied`
+**Symptom**: `bash: /home/forge/gateway.oneone.com/current/storage/logs/laravel.log: Permission denied`
 
 **Cause**: Log files are owned by the Laravel app user (e.g., `www-data` or your deploy user), not the `ubuntu` SSH user.
 
 **Fix**: Use `sudo -u` to write as the app user:
 
 ```bash
-sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Test" >> /home/forge/southbound-api-qlmdtqda.on-forge.com/current/storage/logs/laravel.log'
+sudo -u someuser bash -c 'echo "['"$(date '+%Y-%m-%d %H:%M:%S')"'] production.ERROR: Test" >> /home/forge/gateway.oneone.com/current/storage/logs/laravel.log'
 ```
 
 ### 9.3 Alloy Shows "component does not exist" for Nginx/PHP-FPM
