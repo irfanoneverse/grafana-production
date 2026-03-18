@@ -128,7 +128,7 @@ services:
     container_name: alloy-hub
     user: root
     restart: unless-stopped
-    command: run --reload-interval 1m /etc/alloy/config.alloy
+    command: run /etc/alloy/config.alloy
     volumes:
       - ./alloy-config.alloy:/etc/alloy/config.alloy:ro
       - /proc:/host/proc:ro
