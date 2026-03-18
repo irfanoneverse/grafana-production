@@ -126,6 +126,7 @@ services:
   alloy:
     image: grafana/alloy:v1.6.1
     container_name: alloy-hub
+    user: root
     restart: unless-stopped
     command: run --reload-interval 1m /etc/alloy/config.alloy
     volumes:
